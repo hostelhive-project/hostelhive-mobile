@@ -161,7 +161,7 @@ export const ChatbotScreen: React.FC = () => {
 
         setMessages((prev) => [...prev, botMsg]);
       }
-    } catch (err: any) {
+    } catch {
       const errorMsg: ChatMessage = {
         sessionId: sessionId || 'temp',
         sender: 'Bot',

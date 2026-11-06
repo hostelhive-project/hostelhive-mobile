@@ -34,7 +34,7 @@ import {
 } from '../../services/billingApi';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { buildInvoiceReceiptHtml, buildInvoiceReceiptText } from '../../utils/invoiceReceipt';
+import { buildInvoiceReceiptHtml, buildInvoiceReceiptText, openBrowserReceiptPreview } from '../../utils/invoiceReceipt';
 import type { StudentStackParamList } from '../../navigation/types';
 
 import * as WebBrowser from 'expo-web-browser';
@@ -75,15 +75,17 @@ export const InvoiceDetailScreen: React.FC = () => {
     isFetching: isFetchingBlockchainRecord,
     originalArgs: verifyingPaymentId,
   }] = useLazyGetPaymentBlockchainRecordQuery();
-  const [getInvoiceReceipt, { isFetching: isLoadingReceipt }] = useLazyGetInvoiceReceiptQuery();
+  const [getInvoiceReceipt] = useLazyGetInvoiceReceiptQuery();
 
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [isVerifyingStatus, setIsVerifyingStatus] = useState(false);
+  const [receiptAction, setReceiptAction] = useState<'print' | 'share' | null>(null);
   const [verificationMessage, setVerificationMessage] = useState('Verifying payment with Stripe...');
 
   useFocusEffect(React.useCallback(() => {
     setShowCheckoutModal(false);
     setIsVerifyingStatus(false);
+    setReceiptAction(null);
   }, [invoiceId, userId]));
 
   const handleCloseCheckoutModal = () => {
@@ -237,37 +239,66 @@ export const InvoiceDetailScreen: React.FC = () => {
     return result.data;
   };
 
-  const handleSaveReceipt = async () => {
+  const handleReceiptAction = async (action: 'print' | 'share') => {
+    // One synchronous lock prevents double taps before React has applied the loading state.
+    const operation = beginOperation('receipt');
+    if (!operation) return;
+    setReceiptAction(action);
+    let preview: ReturnType<typeof openBrowserReceiptPreview> | undefined;
     try {
+      // Open during the click gesture, before awaiting the API, to avoid popup blocking.
+      if (action === 'print' && Platform.OS === 'web') preview = openBrowserReceiptPreview();
       const receipt = await loadReceipt();
-      await Print.printAsync({ html: buildInvoiceReceiptHtml(receipt) });
-    } catch (error: any) {
-      showDialog('Unable to Open Receipt', error?.data?.message || error?.message || 'Please try again.');
-    }
-  };
-
-  const handleShareReceipt = async () => {
-    try {
-      const receipt = await loadReceipt();
-      const message = buildInvoiceReceiptText(receipt);
-      if (Platform.OS === 'web') {
-        await Share.share({ message, title: `HostelHive receipt ${receipt.receiptNumber}` });
+      if (!operation.isCurrent()) { preview?.close(); return; }
+      const html = buildInvoiceReceiptHtml(receipt);
+      if (action === 'print') {
+        // Loading describes document preparation, not time spent in the system print dialog.
+        setReceiptAction(null);
+        if (preview) preview.show(html);
+        else await Print.printAsync({ html });
         return;
       }
 
-      const file = await Print.printToFileAsync({ html: buildInvoiceReceiptHtml(receipt) });
+      if (Platform.OS === 'web') {
+        if (typeof navigator.share !== 'function') {
+          showDialog('Sharing Unavailable', 'This browser does not support sharing. Use Save / Print PDF to save the receipt, then share the saved PDF.');
+          return;
+        }
+        setReceiptAction(null);
+        await Share.share({ message: buildInvoiceReceiptText(receipt), title: `HostelHive receipt ${receipt.receiptNumber}` });
+        return;
+      }
+
       const available = await Sharing.isAvailableAsync();
+      if (!operation.isCurrent()) return;
       if (!available) {
         showDialog('Sharing Unavailable', 'This device cannot share the receipt PDF. Use Save / Print PDF instead.');
         return;
       }
+      const file = await Print.printToFileAsync({ html });
+      if (!operation.isCurrent()) return;
+      if (!file.uri) throw new Error('The receipt PDF could not be created. Please try again.');
+      setReceiptAction(null);
       await Sharing.shareAsync(file.uri, {
         mimeType: 'application/pdf',
         UTI: 'com.adobe.pdf',
         dialogTitle: `Share ${receipt.receiptNumber}`,
       });
     } catch (error: any) {
-      showDialog('Unable to Share Receipt', error?.data?.message || error?.message || 'Please try again.');
+      preview?.close();
+      if (!operation.isCurrent()) return;
+      // Dismissing the browser share sheet or iOS print dialog is a normal cancellation.
+      if (error?.name === 'AbortError' || error?.code === 'ERR_PRINT_INCOMPLETE'
+        || /printing did not complete|print(?:ing)? (?:was )?cancel(?:led|ed)|user cancel(?:led|ed)/i.test(error?.message || '')) return;
+      if (action === 'share' && Platform.OS === 'web' && error?.name === 'NotAllowedError') {
+        showDialog('Sharing Unavailable', 'The browser blocked sharing. Use Save / Print PDF to save the receipt, then share the saved PDF.');
+        return;
+      }
+      showDialog(action === 'print' ? 'Unable to Open Receipt' : 'Unable to Share Receipt',
+        error?.data?.message || error?.message || 'Please try again.');
+    } finally {
+      if (operation.isCurrent()) setReceiptAction(null);
+      operation.finish();
     }
   };
 
@@ -426,17 +457,17 @@ export const InvoiceDetailScreen: React.FC = () => {
               </View>
               <View style={styles.receiptActions}>
                 <SecondaryButton
-                  title={isLoadingReceipt ? 'Preparing receipt...' : 'Save / Print PDF'}
-                  onPress={handleSaveReceipt}
-                  isLoading={isLoadingReceipt}
-                  disabled={isLoadingReceipt}
+                  title={receiptAction === 'print' ? 'Preparing PDF...' : 'Save / Print PDF'}
+                  onPress={() => { void handleReceiptAction('print'); }}
+                  isLoading={receiptAction === 'print'}
+                  disabled={receiptAction !== null}
                   style={styles.receiptButton}
                 />
                 <SecondaryButton
-                  title={isLoadingReceipt ? 'Preparing receipt...' : 'Share receipt'}
-                  onPress={handleShareReceipt}
-                  isLoading={isLoadingReceipt}
-                  disabled={isLoadingReceipt}
+                  title={receiptAction === 'share' ? 'Preparing receipt...' : 'Share receipt'}
+                  onPress={() => { void handleReceiptAction('share'); }}
+                  isLoading={receiptAction === 'share'}
+                  disabled={receiptAction !== null}
                   style={styles.receiptButton}
                 />
               </View>

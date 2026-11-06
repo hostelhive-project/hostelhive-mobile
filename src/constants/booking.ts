@@ -16,9 +16,3 @@ export const ACTIVE_BOOKING_STATUSES: readonly BookingStatus[] = [
   'Approved',
   'Pending',
 ] as const;
-
-export const HISTORICAL_BOOKING_STATUSES: readonly BookingStatus[] = [
-  'CheckedOut',
-  'Cancelled',
-  'Rejected',
-] as const;

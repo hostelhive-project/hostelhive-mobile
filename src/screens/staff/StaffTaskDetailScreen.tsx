@@ -365,6 +365,12 @@ export const StaffTaskDetailScreen: React.FC = () => {
         {/* Proof of Work: Photos */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Proof of Work (Photos)</Text>
+          <Text style={styles.photoGuidance}>
+            Photograph the same area from the same angle before and after cleaning, in good light. Include the floor and relevant surfaces. Keep faces and personal documents out of view.
+          </Text>
+          <Text style={styles.photoGuidance}>
+            When enabled, these photos are sent to Groq for an advisory cleanliness assessment. Your administrator makes the final decision.
+          </Text>
 
           {/* Before Photo Section */}
           <View style={styles.photoContainer}>
@@ -694,6 +700,11 @@ const styles = StyleSheet.create({
   photoContainer: {
     marginTop: SPACING.sm,
     marginBottom: SPACING.md,
+  },
+  photoGuidance: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
   },
   photoLabel: {
     ...TYPOGRAPHY.captionSemiBold,

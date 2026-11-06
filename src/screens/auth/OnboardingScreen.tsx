@@ -88,8 +88,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
                 <Image
                   source={require('../../../assets/hostelhive-auth-hero.png')}
                   style={styles.heroImage}
-                  resizeMode="contain"
-                  accessibilityLabel="HostelHive student, hostel, staff, payment, and support services"
+                  resizeMode="cover"
+                  accessibilityLabel="A student checking in with hostel administration, with student rooms, a shared lounge, and housekeeping in the background"
                 />
               </View>
             ) : (
