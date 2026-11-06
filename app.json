@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "HostelHive",
+    "slug": "hostelhive-mobile",
+    "scheme": "hostelhive",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hostelhive.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.hostelhive.app",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1220",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow HostelHive to access your photos for CNIC verification, complaint evidence, and cleaning task verification.",
+          "cameraPermission": "Allow HostelHive to take photos for CNIC verification, complaint evidence, and cleaning task verification."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1220"
+        }
+      ],
+      "expo-font",
+      "expo-status-bar",
+      "expo-image",
+      "expo-sharing"
+    ]
+  }
+}
